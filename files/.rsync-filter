@@ -1,0 +1,11 @@
++ auto-uid.c
++ auto-gid.c
++ install.c
++ usertab.c
++ grouptab.c
++ gen-plist.c
++ gen-plist.sh
++ Makefile.append
++ pkg-message.in
++ mailer.conf.in
+- *

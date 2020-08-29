@@ -1,0 +1,9 @@
+s/qmail is an MTA based on qmail with integrated improvements:
+
+* s/qmail provides TLS support based on the ucspi-ssl package.
+* SMTP Authentication, Anti-Spam, and Anti-Virus features are supported out-of-the-box.
+* Recipient and MAV capabilities in addition with powerful filters for SMTP envelope addresses.
+* Scalable and reliable mail delivery is guaranteed by means of QMQ.
+* Native IPv6 support for all communication modules.
+
+WWW: https://www.fehcom.de/sqmail/sqmail.html

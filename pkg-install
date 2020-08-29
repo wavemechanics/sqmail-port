@@ -1,0 +1,169 @@
+#!/bin/sh
+
+set -e
+
+hostname="$PKG_PREFIX/bin/hostname"
+me="$PKG_PREFIX/control/me"
+rcpthosts="$PKG_PREFIX"/control/rcpthosts
+locals="$PKG_PREFIX"/control/locals
+
+ssldir="$PKG_PREFIX/ssl"
+sslenv="$ssldir/ssl.env"
+services="$PKG_PREFIX/example/services=d"
+
+svscan_servicedir=`sysrc -qn svscan_service || :`
+if test -z "$svscan_servicedir"
+then
+    svscan_servicedir=/var/service
+fi
+
+die() {
+    local err=$?
+    echo "$@" 1>&2
+    exit $err
+}
+
+ucspissl=`pkg query '%p' feh-ucspi-ssl || die "feh-ucspi-ssl must be installed"`
+
+install_contents() {
+    local dest=$1
+
+    if test -e "$dest"
+    then
+        return
+    fi
+
+    cat > "$dest".new
+    mv "$dest".new "$dest"
+}
+
+install_file() {
+    local src=$1
+    local dest=$2
+
+    if test -e "$dest"
+    then
+        return
+    fi
+
+    cp "$src" "$dest".new
+    mv "$dest".new "$dest"
+}
+
+install_service() {
+    local svcname=$1
+    local svc_run=$2
+
+    local real_svc_dir="$PKG_PREFIX/svc/$svcname"
+    local work_svc_dir="$real_svc_dir".new
+
+    if test -e "$real_svc_dir"
+    then
+        return
+    fi
+
+    rm -rf "$work_svc_dir"
+    mkdir "$work_svc_dir"
+    sed -e "s|/var/qmail|$PKG_PREFIX|g" "$PKG_PREFIX/example/$svc_run" > "$work_svc_dir/run"
+    chmod +x "$work_svc_dir/run"
+    touch "$work_svc_dir/down"
+
+    local real_log_dir="/var/log/$svcname"
+    local work_log_dir="$real_log_dir".new
+
+    if ! test -e "$real_log_dir"
+    then
+        mkdir "$work_log_dir"
+        chown qmaill:qnofiles "$work_log_dir"
+        mv "$work_log_dir" "$real_log_dir"
+    fi
+
+    mkdir "$work_svc_dir"/log
+    sed -e "s|/var/qmail/|$PKG_PREFIX|g" "$PKG_PREFIX/example/run_log" > "$work_svc_dir/log/run"
+    chmod +x "$work_svc_dir/log/run"
+    ln -s "$real_log_dir" "$work_svc_dir/log/main"
+
+    mv "$work_svc_dir" "$real_svc_dir"
+}
+
+start_service() {
+    local svcname=$1
+    local svscan_servicedir
+
+    cd "$svscan_servicedir" || return
+    if test -e "$svcname"
+    then
+        return
+    fi
+
+    ln -s "$PKG_PREFIX/svc/$svcname"
+}
+
+main() {
+    local pkgname=$1
+    local file
+    local line
+    local svcname
+    local svc_run
+
+    if test "$2" != POST-INSTALL
+    then
+        return
+    fi
+
+    umask 022
+
+    if ! test -e "$PKG_PREFIX/queue/lock/trigger"
+    then
+        mkfifo -m 0622 "$PKG_PREFIX/queue/lock/trigger.new"
+        chown qmails:qmail "$PKG_PREFIX/queue/lock/trigger.new"
+        mv "$PKG_PREFIX/queue/lock/trigger.new" "$PKG_PREFIX/queue/lock/trigger"
+    fi
+
+    "$hostname" | install_contents "$me"
+    "$hostname" | install_contents "$rcpthosts"
+    (
+        echo "localhost"
+        "$hostname"
+    ) | install_contents "$locals"
+
+
+    if ! test -e "$PKG_PREFIX/alias/Maildir"
+    then
+        su -m alias -c "$PKG_PREFIX"'/bin/maildirmake '"$PKG_PREFIX"'/alias/Maildir'
+    fi
+    for file in .qmail-mailer-daemon .qmail-postmaster .qmail-root
+    do
+        install_contents "$PKG_PREFIX/alias/$file" < /dev/null
+    done
+
+    for file in `ls "$ucspissl/etc/feh-ucspi-ssl"`
+    do
+        install_file "$ucspissl/etc/feh-ucspi-ssl/$file" "$ssldir/$file"
+    done
+
+    if ! test -f "$sslenv"
+    then
+        sed \
+            -e "s|SQMTLS|root|g" \
+            -e "s|NOFILES|qnofiles|" \
+            -e "s|QMAIL|$PKG_PREFIX|" \
+            "$sslenv".template |
+        install_contents "$sslenv"
+    fi
+
+    mkdir -p "$PKG_PREFIX/svc"
+
+    sed -e '/^svc:/!d' -e 's/^svc://' -e 's/[^:]*://' "$services" | while read line
+    do
+        svcname=${line%%:*}
+        svc_run=${line#*:}
+
+        install_service "$svcname" "$svc_run"
+        start_service "$svcname"
+    done
+
+    echo "MANPATH $PKG_PREFIX/man" > /usr/local/etc/man.d/${pkgname}.conf
+}
+
+main "$@"

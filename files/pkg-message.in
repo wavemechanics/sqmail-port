@@ -1,0 +1,50 @@
+The following has been set up:
+
+* %%PREFIX%%
+
+* A basic configuration has been set up under %%PREFIX%%/control.
+
+* Mail to root, postmaster and mailer-daemon will be delivered to %%PREFIX%%/alias/Maildir/.
+
+* Service directories under %%PREFIX%%/svc have been created in the 'down' state and
+  symlinked into the daemontools service directory.
+
+* At service start up, per-service log directories will be created under /var/log.
+
+* Files under %%PREFIX%%/ssl have been copied from the feh-ucspi-ssl etc directory, and
+  %%PREFIX%%/ssl/ssl.env has been created.
+
+* /usr/local/etc/man.d has been updated to include a reference to /var/qmail/man.
+
+
+The following needs to be done by you:
+
+* Verify the configuration under %%PREFIX%%/control.
+
+* Disable any currently running mailers, like sendmail.
+
+* Start qmail services by removing the service's 'down' file and running svc -u.
+
+
+Optional:
+
+* You can optionally update /etc/mail/mailer.conf to reference qmail programs.
+  An example replacement file is in %%PREFIX%%/example.
+
+* Install your own certificates in %%PREFIX%%/ssl.
+
+
+What is left after deinstall:
+
+* Deinstall will not remove any modified files under %%PREFIX%%/control.
+
+* Deinstall will not remove any modified files under %%PREFIX%%/ssl.
+
+* Deinstall will not remove anything under %%PREFIX%%/alias.
+
+* Deinstall will not remove anything under %%PREFIX%%/svc.
+
+* Deinstall will not remove log directories from /var/log.
+
+
+General documentation can be found under %%PREFIX%%/doc.

@@ -1,0 +1,42 @@
+#!/bin/sh
+
+set -e
+
+services="$PKG_PREFIX/example/services=d"
+
+svscan_servicedir=`sysrc -qn svscan_service || :`
+if test -z "$svscan_servicedir"
+then
+    svscan_servicedir=/var/service
+fi
+
+stop_service() {
+    local svcname=$1
+
+    cd "$svscan_servicedir/$svcname" || return
+    rm "$svscan_servicedir/$svcname"
+    svc -dx . log
+}
+
+main() {
+    local pkgname=$1
+
+    if test "$2" != DEINSTALL
+    then
+        return
+    fi
+
+    rm -f /usr/local/etc/man.d/${pkgname}.conf
+
+    sed -e '/^svc:/!d' -e 's/^svc://' -e 's/[^:]*://' "$services" | while read line
+    do
+        svcname=${line%%:*}
+        stop_service "$svcname"
+    done
+
+    rm -f "$PKG_PREFIX/queue/lock/trigger"
+    #rmdir "$PKG_PREFIX/queue/lock" || :
+    #rmdir "$PKG_PREFIX/queue" || :
+}
+
+main "$@"

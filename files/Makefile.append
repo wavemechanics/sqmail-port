@@ -1,0 +1,19 @@
+#
+# This Makefile fragment is appended to sqmail Makefile for extra utilities.
+#
+
+gen-plist: \
+load gen-plist.o hier.o auto_uids.o auto_qmail.o auto_split.o qlibs.lib
+	./load gen-plist hier.o auto_uids.o auto_qmail.o auto_split.o `cat qlibs.lib`
+
+gen-plist.o: \
+compile gen-plist.c usertab.c grouptab.c exit.h
+	./compile gen-plist.c
+
+# additional dependency
+auto-uid.o: \
+usertab.c
+
+# additional dependency
+auto-gid.o: \
+grouptab.c
